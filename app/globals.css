@@ -1,0 +1,134 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0f1210;
+  --foreground: #efe8dc;
+  --ink: #efe8dc;
+  --ink-muted: #9a9184;
+  --brass: #c4a35a;
+  --line: rgba(239, 232, 220, 0.12);
+  --panel: rgba(239, 232, 220, 0.04);
+  --studio-bg: #121612;
+  --hero-glow: rgba(196, 163, 90, 0.18);
+  --paper: #1a1f1b;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-mono);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body), system-ui, sans-serif;
+}
+
+/* Paper grain + atmosphere */
+.hero-surface {
+  background:
+    radial-gradient(ellipse 80% 50% at 70% 40%, var(--hero-glow), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 20% 80%, rgba(62, 90, 70, 0.25), transparent 50%),
+    linear-gradient(165deg, #141814 0%, #0c0e0c 45%, #151a14 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-surface::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.07;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+
+.trading-card {
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.trading-card:hover {
+  transform: rotate3d(0.2, 1, 0, 6deg) translateY(-4px);
+}
+
+.card-shine {
+  border-radius: inherit;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.08) 45%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(255, 255, 255, 0.06) 55%,
+    transparent 70%
+  );
+  background-size: 220% 220%;
+  animation: foil-sweep 4.5s ease-in-out infinite;
+  mix-blend-mode: soft-light;
+}
+
+@keyframes foil-sweep {
+  0%,
+  100% {
+    background-position: 120% 40%;
+  }
+  50% {
+    background-position: -20% 60%;
+  }
+}
+
+@keyframes float-card {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(1deg);
+  }
+}
+
+.hero-card-float {
+  animation: float-card 7s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.8s ease-out both;
+}
+
+.animate-fade-up-delay {
+  animation: fade-up 0.9s ease-out 0.15s both;
+}
+
+.animate-fade-up-delay-2 {
+  animation: fade-up 1s ease-out 0.3s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-shine,
+  .hero-card-float,
+  .animate-fade-up,
+  .animate-fade-up-delay,
+  .animate-fade-up-delay-2,
+  .trading-card {
+    animation: none !important;
+    transition: none !important;
+  }
+}
