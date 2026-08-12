@@ -61,7 +61,7 @@ export const HERO_SAMPLES: HeroSample[] = [
     state: themed("arcade", "prism", {
       name: "Ever After",
       photoUrl:
-        "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=640&h=800&q=80",
+        "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=400&h=560&q=70",
       flavor: "Ten years. Same laugh. Still choosing each other.",
       hp: 140,
       rarity: "mythic",
@@ -100,7 +100,7 @@ export const HERO_SAMPLES: HeroSample[] = [
       name: "Candle Kid",
       // Portrait cake with candles — subject sits in upper/mid frame for full-art frost
       photoUrl:
-        "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=640&h=900&q=80&crop=center",
+        "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=400&h=560&q=70&crop=center",
       cropY: 42,
       fullArtFrost: "clear",
       flavor: "Wish hard. Blow once.",
@@ -139,7 +139,7 @@ export const HERO_SAMPLES: HeroSample[] = [
     state: classicEnergy("Fire", {
       name: "Mochi",
       photoUrl:
-        "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=640&h=800&q=80",
+        "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=400&h=560&q=70",
       flavor: "Undefeated in the sunbeam arena. Collector of socks.",
       hp: 180,
       rarity: "mythic",
@@ -175,7 +175,7 @@ export const HERO_SAMPLES: HeroSample[] = [
     state: themed("ember", "standard", {
       name: "Soft Landing",
       photoUrl:
-        "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&w=640&h=800&q=80",
+        "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&w=400&h=560&q=70",
       flavor: "Hands held on a Tuesday. Ordinary magic.",
       hp: 110,
       rarity: "rare",
@@ -211,7 +211,7 @@ export const HERO_SAMPLES: HeroSample[] = [
     state: themed("garden", "prism", {
       name: "Kinfolk",
       photoUrl:
-        "https://images.unsplash.com/photo-1609220136736-443140cffec6?auto=format&fit=crop&w=640&h=800&q=80",
+        "https://images.unsplash.com/photo-1609220136736-443140cffec6?auto=format&fit=crop&w=400&h=560&q=70",
       flavor: "Same table. Louder every year. Still home.",
       hp: 160,
       rarity: "mythic",
@@ -250,7 +250,7 @@ export const HERO_SAMPLES: HeroSample[] = [
       name: "River",
       // Face-forward dog portrait so classic art window doesn’t crop the muzzle
       photoUrl:
-        "https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?auto=format&fit=crop&w=640&h=800&q=80&crop=faces",
+        "https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?auto=format&fit=crop&w=400&h=560&q=70&crop=faces",
       cropY: 40,
       flavor: "Chases every ripple. Never loses a staring contest.",
       hp: 90,
@@ -284,7 +284,7 @@ export const HERO_SAMPLES: HeroSample[] = [
     state: themed("noir", "fullart", {
       name: "Golden Hour",
       photoUrl:
-        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=640&h=800&q=80",
+        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&h=560&q=70",
       flavor: "Daylight, then dinner.",
       hp: 100,
       rarity: "rare",
@@ -322,7 +322,7 @@ export const HERO_SAMPLES: HeroSample[] = [
     state: themed("arcade", "standard", {
       name: "Recess",
       photoUrl:
-        "https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?auto=format&fit=crop&w=640&h=800&q=80",
+        "https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?auto=format&fit=crop&w=400&h=560&q=70",
       flavor: "Mud on the knees. Victory in the laugh.",
       hp: 70,
       rarity: "uncommon",

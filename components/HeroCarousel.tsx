@@ -6,7 +6,13 @@ import { TradingCard } from "@/components/TradingCard";
 import { HERO_SAMPLES, type HeroSample } from "@/lib/heroSamples";
 
 const AUTO_MS = 2800;
-const CAPTURE_W = 300;
+/** Smaller than studio — enough for ~200px slots at 1.25× capture. */
+const CAPTURE_W = 240;
+const CAPTURE_SCALE = 1.25;
+/** Bump when sample art/layout changes so caches refresh. */
+const CACHE_VERSION = "hero-samples-v3";
+const IDB_NAME = "keepsleeve-hero";
+const IDB_STORE = "previews";
 
 function applySampleTemplate(sample: HeroSample) {
   window.dispatchEvent(
@@ -37,69 +43,198 @@ async function waitForImages(root: HTMLElement) {
   );
 }
 
+function openHeroDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(IDB_STORE)) {
+        db.createObjectStore(IDB_STORE);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function readCachedPreviews(): Promise<Record<string, string>> {
+  try {
+    const db = await openHeroDb();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, "readonly");
+      const store = tx.objectStore(IDB_STORE);
+      const req = store.get(CACHE_VERSION);
+      req.onsuccess = () => {
+        const value = req.result as Record<string, string> | undefined;
+        resolve(value && typeof value === "object" ? value : {});
+      };
+      req.onerror = () => reject(req.error);
+    });
+  } catch {
+    return {};
+  }
+}
+
+async function writeCachedPreviews(images: Record<string, string>) {
+  try {
+    const db = await openHeroDb();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, "readwrite");
+      tx.objectStore(IDB_STORE).put(images, CACHE_VERSION);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch {
+    // Quota / private mode — ignore
+  }
+}
+
+function preloadHeroPhotos() {
+  for (const sample of HERO_SAMPLES) {
+    const url = sample.state.photoUrl;
+    if (!url || !url.startsWith("http")) continue;
+    const img = new Image();
+    img.decoding = "async";
+    img.crossOrigin = "anonymous";
+    img.src = url;
+  }
+}
+
+async function captureOne(el: HTMLElement): Promise<string | null> {
+  await waitForImages(el);
+  const dataUrl = await domToPng(el, {
+    scale: CAPTURE_SCALE,
+    backgroundColor: null,
+    style: { transform: "none" },
+    filter: (node) => {
+      if (!(node instanceof Element)) return true;
+      if (node.classList?.contains("cf-overlay")) return false;
+      if (node.classList?.contains("cf-specular")) return false;
+      return true;
+    },
+  });
+  if (!dataUrl || dataUrl === "data:,") return null;
+  return dataUrl;
+}
+
+async function mapPool<T, R>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  async function run() {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await worker(items[i]);
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => run()),
+  );
+  return results;
+}
+
 /**
- * Renders each sample at full studio size off-screen, captures a PNG,
- * then the carousel shows plain images (clean scaling, no text clip).
+ * Renders samples off-screen once, snapshots to PNG (cached in IndexedDB),
+ * and shows plain images in the carousel for clean scaling.
  */
 function useHeroSampleImages() {
   const [images, setImages] = useState<Record<string, string>>({});
   const [ready, setReady] = useState(false);
-  const hostRef = useRef<HTMLDivElement>(null);
+  const [needCapture, setNeedCapture] = useState(false);
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
     let cancelled = false;
+    preloadHeroPhotos();
 
-    async function captureAll() {
-      // Let layout paint the off-screen cards first
-      await new Promise((r) =>
-        requestAnimationFrame(() => requestAnimationFrame(r)),
-      );
+    void (async () => {
+      const cached = await readCachedPreviews();
       if (cancelled) return;
-
-      const next: Record<string, string> = {};
-      for (const sample of HERO_SAMPLES) {
-        const el = cardRefs.current[sample.id];
-        if (!el) continue;
-        try {
-          await waitForImages(el);
-          if (cancelled) return;
-          const dataUrl = await domToPng(el, {
-            scale: 2,
-            backgroundColor: null,
-            style: { transform: "none" },
-            filter: (node) => {
-              if (!(node instanceof Element)) return true;
-              if (node.classList?.contains("cf-overlay")) return false;
-              if (node.classList?.contains("cf-specular")) return false;
-              return true;
-            },
-          });
-          if (dataUrl && dataUrl !== "data:,") {
-            next[sample.id] = dataUrl;
-            if (!cancelled) {
-              setImages((prev) => ({ ...prev, [sample.id]: dataUrl }));
-            }
-          }
-        } catch (err) {
-          console.warn("Hero sample capture failed", sample.id, err);
-        }
-      }
-      if (!cancelled) {
-        setImages((prev) => ({ ...prev, ...next }));
+      const complete = HERO_SAMPLES.every((s) => Boolean(cached[s.id]));
+      if (complete) {
+        setImages(cached);
         setReady(true);
+        setNeedCapture(false);
+        return;
       }
-    }
+      if (Object.keys(cached).length) {
+        setImages(cached);
+      }
+      setNeedCapture(true);
+    })();
 
-    void captureAll();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const captureHost = (
+  useEffect(() => {
+    if (!needCapture) return;
+    let cancelled = false;
+
+    async function captureMissing() {
+      await new Promise((r) =>
+        requestAnimationFrame(() => requestAnimationFrame(r)),
+      );
+      if (cancelled) return;
+
+      const already = await readCachedPreviews();
+      if (cancelled) return;
+
+      // Capture center/early cards first so the carousel fills quickly
+      const order = HERO_SAMPLES;
+      const missing = order.filter((s) => !already[s.id]);
+
+      if (Object.keys(already).length) {
+        setImages((prev) => ({ ...already, ...prev }));
+      }
+
+      if (missing.length === 0) {
+        setImages(already);
+        setReady(true);
+        setNeedCapture(false);
+        return;
+      }
+
+      const captured: Record<string, string> = { ...already };
+
+      await mapPool(missing, 3, async (sample) => {
+        if (cancelled) return null;
+        const el = cardRefs.current[sample.id];
+        if (!el) return null;
+        try {
+          const dataUrl = await captureOne(el);
+          if (!dataUrl || cancelled) return null;
+          captured[sample.id] = dataUrl;
+          setImages((prev) => ({ ...prev, [sample.id]: dataUrl }));
+          return dataUrl;
+        } catch (err) {
+          console.warn("Hero sample capture failed", sample.id, err);
+          return null;
+        }
+      });
+
+      if (!cancelled) {
+        setImages(captured);
+        setReady(true);
+        setNeedCapture(false);
+        void writeCachedPreviews(captured);
+      }
+    }
+
+    void captureMissing();
+    return () => {
+      cancelled = true;
+    };
+    // Only re-run when we decide capture is needed
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needCapture]);
+
+  const captureHost = needCapture ? (
     <div
-      ref={hostRef}
       aria-hidden
       className="pointer-events-none fixed top-0 -left-[10000px] z-[-1] flex flex-col gap-4"
     >
@@ -120,7 +255,7 @@ function useHeroSampleImages() {
         </div>
       ))}
     </div>
-  );
+  ) : null;
 
   return { images, ready, captureHost };
 }
