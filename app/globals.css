@@ -135,6 +135,10 @@ body {
   scroll-snap-stop: always;
 }
 
+.hero-sample-scale {
+  container-type: inline-size;
+}
+
 @keyframes fade-up {
   from {
     opacity: 0;

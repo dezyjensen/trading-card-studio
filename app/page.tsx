@@ -14,16 +14,16 @@ export default function Home() {
         <SiteHeader />
 
         <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 pb-10 pt-1 sm:gap-8 sm:pb-12 sm:pt-2 lg:gap-10 lg:px-8 lg:pb-16 lg:pt-4">
-          <div className="relative z-20 w-full max-w-xl">
-            <h1 className="animate-fade-up text-balance text-center font-[family-name:var(--font-display)] text-[1.75rem] font-semibold leading-snug tracking-normal text-[var(--ink)] sm:text-4xl sm:leading-snug md:text-[2.75rem] lg:text-left">
+          <div className="relative z-20 mx-auto w-full max-w-2xl text-center">
+            <h1 className="animate-fade-up text-balance font-[family-name:var(--font-display)] text-[1.75rem] font-semibold leading-snug tracking-normal text-[var(--ink)] sm:text-4xl sm:leading-snug md:text-[2.75rem]">
               {APP_SLOGAN}
             </h1>
 
-            <p className="animate-fade-up-delay mx-auto mt-3 max-w-md text-center text-base leading-relaxed text-[var(--ink-muted)] sm:text-lg lg:mx-0 lg:text-left">
+            <p className="animate-fade-up-delay mx-auto mt-3 max-w-md text-base leading-relaxed text-[var(--ink-muted)] sm:text-lg">
               {APP_TAGLINE}
             </p>
 
-            <div className="animate-fade-up-delay-2 mt-5 flex flex-col items-stretch gap-2 sm:mt-6 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-3 lg:justify-start">
+            <div className="animate-fade-up-delay-2 mt-5 flex flex-col items-stretch gap-2 sm:mt-6 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-3">
               <a
                 href="#studio"
                 className="min-h-12 rounded-xl bg-[var(--brass)] px-6 py-3.5 text-center font-[family-name:var(--font-brand)] font-semibold text-[#1a140c] transition hover:brightness-110"

@@ -2,9 +2,53 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { TradingCard } from "@/components/TradingCard";
-import { HERO_SAMPLES } from "@/lib/heroSamples";
+import { HERO_SAMPLES, type HeroSample } from "@/lib/heroSamples";
+import type { CardState } from "@/lib/themes";
 
 const AUTO_MS = 2800;
+/** Render cards at studio size, then scale down so type/layout never clips. */
+const CARD_NATIVE_W = 300;
+
+function ScaledSampleCard({
+  state,
+  active,
+}: {
+  state: CardState;
+  active: boolean;
+}) {
+  return (
+    <div
+      className="hero-sample-scale relative w-full overflow-visible"
+      style={{ aspectRatio: "5 / 7" }}
+    >
+      <div
+        className="absolute left-0 top-0 origin-top-left will-change-transform"
+        style={{
+          width: CARD_NATIVE_W,
+          transform: `scale(calc(100cqw / ${CARD_NATIVE_W}))`,
+        }}
+      >
+        <TradingCard
+          state={state}
+          interactive={active}
+          className="!max-w-none"
+        />
+      </div>
+    </div>
+  );
+}
+
+function applySampleTemplate(sample: HeroSample) {
+  window.dispatchEvent(
+    new CustomEvent("tcs-apply-template", { detail: sample.state }),
+  );
+  const studio = document.getElementById("studio");
+  if (studio) {
+    studio.scrollIntoView({ behavior: "smooth", block: "start" });
+  } else {
+    window.location.hash = "studio";
+  }
+}
 
 export function HeroCarousel() {
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -74,6 +118,8 @@ export function HeroCarousel() {
   }
 
   const sample = HERO_SAMPLES[active];
+  /** Slot width — card is painted at 300px then scaled into this box. */
+  const slotClass = "w-[min(62vw,248px)] sm:w-[260px]";
 
   return (
     <div
@@ -101,16 +147,16 @@ export function HeroCarousel() {
         <div
           ref={scrollerRef}
           onScroll={onScroll}
-          className="hero-carousel flex snap-x snap-mandatory gap-4 overflow-x-auto py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-5 sm:py-4"
+          className="hero-carousel flex snap-x snap-mandatory gap-5 overflow-x-auto overflow-y-visible py-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-6 sm:py-6"
           style={{
-            paddingInline: "max(1.25rem, calc(50% - 7.25rem))",
-            scrollPaddingInline: "max(1.25rem, calc(50% - 7.25rem))",
+            paddingInline: "max(1.25rem, calc(50% - 7.75rem))",
+            scrollPaddingInline: "max(1.25rem, calc(50% - 7.75rem))",
             WebkitMaskImage:
-              "linear-gradient(90deg, transparent 0%, #000 8%, #000 92%, transparent 100%)",
+              "linear-gradient(90deg, transparent 0%, #000 6%, #000 94%, transparent 100%)",
             maskImage:
-              "linear-gradient(90deg, transparent 0%, #000 8%, #000 92%, transparent 100%)",
+              "linear-gradient(90deg, transparent 0%, #000 6%, #000 94%, transparent 100%)",
           }}
-          aria-label="Sample trading cards"
+          aria-label="Sample trading cards — click one to use as a template"
           tabIndex={0}
           onKeyDown={(e) => {
             if (e.key === "ArrowRight") {
@@ -129,20 +175,36 @@ export function HeroCarousel() {
               ref={(el) => {
                 itemRefs.current[i] = el;
               }}
-              className={`hero-carousel-item w-[min(58vw,232px)] shrink-0 snap-center transition-opacity duration-300 sm:w-[248px] ${
-                i === active ? "z-[1] opacity-100" : "opacity-35"
+              className={`hero-carousel-item shrink-0 snap-center transition-opacity duration-300 ${slotClass} ${
+                i === active ? "z-[1] opacity-100" : "opacity-40"
               }`}
             >
-              <TradingCard
-                state={item.state}
-                interactive={i === active}
-                className="!max-w-none"
-              />
+              <button
+                type="button"
+                onClick={() => {
+                  setActive(i);
+                  scrollToIndex(i);
+                  applySampleTemplate(item);
+                }}
+                className="group w-full rounded-xl text-left outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--brass)] focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+                aria-label={`Use “${item.state.name}” as a template`}
+              >
+                <ScaledSampleCard state={item.state} active={i === active} />
+                <span
+                  className={`mt-2 block text-center text-[11px] font-semibold text-[var(--brass)] transition sm:text-xs ${
+                    i === active
+                      ? "opacity-100"
+                      : "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"
+                  }`}
+                >
+                  Use as template
+                </span>
+              </button>
             </div>
           ))}
         </div>
 
-        <div className="mt-3 flex items-center justify-center gap-3 px-5">
+        <div className="mt-1 flex items-center justify-center gap-3 px-5 sm:mt-2">
           <button
             type="button"
             onClick={() => goTo(active - 1)}
@@ -186,6 +248,9 @@ export function HeroCarousel() {
           {sample.caption}
           <span className="mx-2 opacity-40">·</span>
           {sample.state.name}
+          <span className="mt-1 block normal-case tracking-normal opacity-80 sm:mt-1.5">
+            Tap a card to edit it in the studio
+          </span>
         </p>
       </div>
     </div>

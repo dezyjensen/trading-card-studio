@@ -133,6 +133,20 @@ export function Studio() {
       setActiveSaveIdState(save.id);
       setSaveMessage(`Loaded “${save.name}”`);
     }
+    function onApplyTemplate(e: Event) {
+      const template = (e as CustomEvent<CardState>).detail;
+      if (!template) return;
+      setState({
+        ...DEFAULT_CARD_STATE,
+        ...template,
+        collectorNumber: DEFAULT_CARD_STATE.collectorNumber,
+      });
+      setActiveSaveIdState(null);
+      setNeedsAccount(false);
+      setSaveMessage(
+        `Using “${template.name || "sample"}” as a template — edit & save when ready`,
+      );
+    }
     function onNewCard() {
       void (async () => {
         if (STATIC_DEMO || !BACKEND_ENABLED) {
@@ -151,10 +165,12 @@ export function Studio() {
     }
     window.addEventListener(USER_CHANGED_EVENT, onUserChanged);
     window.addEventListener("tcs-load-save", onLoadSave);
+    window.addEventListener("tcs-apply-template", onApplyTemplate);
     window.addEventListener("tcs-new-card", onNewCard);
     return () => {
       window.removeEventListener(USER_CHANGED_EVENT, onUserChanged);
       window.removeEventListener("tcs-load-save", onLoadSave);
+      window.removeEventListener("tcs-apply-template", onApplyTemplate);
       window.removeEventListener("tcs-new-card", onNewCard);
     };
   }, [applyUserSession]);
@@ -273,23 +289,13 @@ export function Studio() {
         />
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <ShareCardButton
           cardRef={cardRef}
           cardName={state.name}
           onExportStart={startExport}
           onExportEnd={endExport}
         />
-        {activeSaveId && (
-          <button
-            type="button"
-            disabled={saveBusy}
-            onClick={() => void handleSave(true)}
-            className="min-h-10 flex-1 rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-semibold text-[var(--ink)] sm:flex-none"
-          >
-            Save as new
-          </button>
-        )}
         <button
           type="button"
           onClick={() => {
@@ -297,10 +303,20 @@ export function Studio() {
             setActiveSaveIdState(null);
             setSaveMessage("Started a new card");
           }}
-          className="min-h-10 flex-1 rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-semibold text-[var(--ink-muted)] sm:flex-none"
+          className="min-h-10 rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-semibold text-[var(--ink-muted)]"
         >
           New card
         </button>
+        {activeSaveId && (
+          <button
+            type="button"
+            disabled={saveBusy}
+            onClick={() => void handleSave(true)}
+            className="min-h-10 col-span-2 rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-semibold text-[var(--ink)]"
+          >
+            Save as new
+          </button>
+        )}
       </div>
 
       {saveMessage && (
