@@ -251,7 +251,7 @@ export const HERO_SAMPLES: HeroSample[] = [
       // Face-forward dog portrait so classic art window doesn’t crop the muzzle
       photoUrl:
         "https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?auto=format&fit=crop&w=400&h=560&q=70&crop=faces",
-      cropY: 40,
+      cropY: 55,
       flavor: "Chases every ripple. Never loses a staring contest.",
       hp: 90,
       rarity: "rare",

@@ -7,6 +7,7 @@
     "dev:lan": "next dev --hostname 0.0.0.0 --port 3000",
     "build": "next build",
     "build:static": "bash scripts/build-static.sh",
+    "capture:hero": "node scripts/capture-hero-samples.cjs",
     "start": "next start",
     "lint": "eslint",
     "db:setup": "bash scripts/setup-local-db.sh",
@@ -41,6 +42,7 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.11",
+    "playwright": "^1.62.1",
     "tailwindcss": "^4",
     "tsx": "^4.23.1",
     "typescript": "^5"

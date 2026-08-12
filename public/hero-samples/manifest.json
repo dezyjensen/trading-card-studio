@@ -1,0 +1,36 @@
+{
+  "samples": [
+    {
+      "id": "anniversary-spectrum",
+      "src": "/hero-samples/anniversary-spectrum.png"
+    },
+    {
+      "id": "birthday-fullart",
+      "src": "/hero-samples/birthday-fullart.png"
+    },
+    {
+      "id": "mochi-classic",
+      "src": "/hero-samples/mochi-classic.png"
+    },
+    {
+      "id": "love-modern",
+      "src": "/hero-samples/love-modern.png"
+    },
+    {
+      "id": "family-spectrum",
+      "src": "/hero-samples/family-spectrum.png"
+    },
+    {
+      "id": "river-classic",
+      "src": "/hero-samples/river-classic.png"
+    },
+    {
+      "id": "portrait-fullart",
+      "src": "/hero-samples/portrait-fullart.png"
+    },
+    {
+      "id": "kids-modern",
+      "src": "/hero-samples/kids-modern.png"
+    }
+  ]
+}

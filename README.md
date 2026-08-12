@@ -27,11 +27,14 @@ When `STATIC_DEMO` is `true`:
 - Binder saves use `localStorage` in the browser
 - You can ship a static site with no server
 
-### Build locally
+### Hero sample images
+
+Carousel cards are static PNGs in `public/hero-samples/`.
+
+To regenerate after changing sample designs (requires `npm run dev` running and Playwright + system Chrome):
 
 ```bash
-npm run build:static
-npx serve out
+npm run capture:hero
 ```
 
 The static build writes to `out/` with base path `/trading-card-studio` (for project Pages). Override with `NEXT_PUBLIC_BASE_PATH=` if you host at the domain root.
