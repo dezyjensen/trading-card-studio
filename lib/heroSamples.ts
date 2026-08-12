@@ -98,8 +98,11 @@ export const HERO_SAMPLES: HeroSample[] = [
     caption: "Full Art · Birthday",
     state: themed("aurora", "fullart", {
       name: "Candle Kid",
+      // Portrait cake with candles — subject sits in upper/mid frame for full-art frost
       photoUrl:
-        "https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?auto=format&fit=crop&w=640&h=800&q=80",
+        "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=640&h=900&q=80&crop=center",
+      cropY: 42,
+      fullArtFrost: "clear",
       flavor: "Wish hard. Blow once.",
       hp: 80,
       rarity: "mythic",
@@ -245,8 +248,10 @@ export const HERO_SAMPLES: HeroSample[] = [
     caption: "Classic · Best Friend",
     state: classicEnergy("Water", {
       name: "River",
+      // Face-forward dog portrait so classic art window doesn’t crop the muzzle
       photoUrl:
-        "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=640&h=800&q=80",
+        "https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?auto=format&fit=crop&w=640&h=800&q=80&crop=faces",
+      cropY: 40,
       flavor: "Chases every ripple. Never loses a staring contest.",
       hp: 90,
       rarity: "rare",

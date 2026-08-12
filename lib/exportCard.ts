@@ -131,25 +131,41 @@ export async function exportCardPng(
 export async function shareCardPng(
   element: HTMLElement,
   title: string,
-): Promise<"shared" | "downloaded" | "manual" | "unsupported"> {
+): Promise<"shared" | "downloaded" | "manual" | "copied"> {
   const filename = `${slugify(title) || "trading-card"}.png`;
-  const { dataUrl, file } = await captureCardPng(element, filename);
+  const { dataUrl, blob, file } = await captureCardPng(element, filename);
 
-  if (typeof navigator !== "undefined" && navigator.share) {
-    const payload: ShareData = {
-      title: `${title} — ${APP_NAME}`,
-      text: `Made with ${APP_NAME}`,
-    };
-    if (navigator.canShare?.({ files: [file] })) {
-      payload.files = [file];
-    }
+  // Only use the system share sheet when it can include the PNG.
+  // Text-only share feels like “nothing happened” on desktop.
+  if (canShareFiles()) {
     try {
-      await navigator.share(payload);
+      await navigator.share({
+        files: [file],
+        title: `${title} — ${APP_NAME}`,
+        text: `Made with ${APP_NAME}`,
+      });
       return "shared";
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
         throw err;
       }
+      // Fall through to clipboard / download
+    }
+  }
+
+  // Desktop: copy image to clipboard when possible (feels like Share)
+  if (
+    typeof ClipboardItem !== "undefined" &&
+    navigator.clipboard?.write &&
+    !isMobileLike()
+  ) {
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({ "image/png": blob }),
+      ]);
+      return "copied";
+    } catch {
+      // Fall through to download
     }
   }
 

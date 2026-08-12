@@ -295,6 +295,9 @@ export function Studio() {
           cardName={state.name}
           onExportStart={startExport}
           onExportEnd={endExport}
+          onStatus={(message) => {
+            if (message) setSaveMessage(message);
+          }}
         />
         <button
           type="button"

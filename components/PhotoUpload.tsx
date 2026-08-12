@@ -139,7 +139,7 @@ export function PhotoUpload({
           </button>
         </div>
         <p className="mt-3 text-xs text-[var(--ink-muted)]">
-          Works on iPhone & Android · opens crop & highlight editor
+          Opens the crop & highlight editor after you pick a photo
         </p>
       </div>
 

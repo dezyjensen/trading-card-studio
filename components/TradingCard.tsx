@@ -1074,6 +1074,9 @@ function ArtImage({ state, fill }: { state: CardState; fill?: boolean }) {
     <img
       src={state.photoUrl}
       alt=""
+      crossOrigin={
+        state.photoUrl.startsWith("http") ? "anonymous" : undefined
+      }
       className="h-full w-full object-cover"
       style={{ objectPosition: `center ${state.cropY}%` }}
       draggable={false}

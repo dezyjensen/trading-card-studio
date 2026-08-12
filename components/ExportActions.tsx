@@ -79,6 +79,8 @@ export function ExportActions({
       );
       if (result === "shared") {
         setMessage("Shared");
+      } else if (result === "copied") {
+        setMessage("Card copied — paste it into Messages, Mail, or Notes");
       } else if (result === "manual") {
         setMessage("Touch and hold the image → Add to Photos");
       } else {
@@ -139,7 +141,7 @@ export function ExportActions({
       )}
       {preferShare && !message && (
         <p className="text-center text-[11px] text-[var(--ink-muted)]">
-          On iPhone & Android, choose Add to Photos / Save image
+          In the share sheet, choose Save Image / Add to Photos
         </p>
       )}
     </div>
@@ -153,6 +155,7 @@ export function ShareCardButton({
   onExportEnd,
   disabled,
   className = "",
+  onStatus,
 }: {
   cardRef: RefObject<HTMLDivElement | null>;
   cardName: string;
@@ -160,22 +163,41 @@ export function ShareCardButton({
   onExportEnd?: () => void;
   disabled?: boolean;
   className?: string;
+  onStatus?: (message: string | null) => void;
 }) {
   const [busy, setBusy] = useState(false);
 
   async function handleShare() {
     if (!cardRef.current || busy || disabled) return;
     setBusy(true);
+    onStatus?.(null);
     onExportStart?.();
     await new Promise((r) =>
       requestAnimationFrame(() => requestAnimationFrame(r)),
     );
     try {
-      await shareCardPng(cardRef.current, cardName || "Trading Card");
-    } catch (err) {
-      if (!(err instanceof DOMException && err.name === "AbortError")) {
-        console.error(err);
+      const result = await shareCardPng(
+        cardRef.current,
+        cardName || "Trading Card",
+      );
+      if (result === "shared") {
+        onStatus?.("Shared");
+      } else if (result === "copied") {
+        onStatus?.("Card copied — paste it into Messages, Mail, or Notes");
+      } else if (result === "manual") {
+        onStatus?.("Touch and hold the image → Add to Photos");
+      } else {
+        onStatus?.("Card downloaded");
       }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        onStatus?.(null);
+        return;
+      }
+      console.error(err);
+      onStatus?.(
+        err instanceof Error ? err.message : "Share failed — try Download Image",
+      );
     } finally {
       onExportEnd?.();
       setBusy(false);
