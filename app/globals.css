@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
-:root {
+:root,
+html.dark {
   --background: #0f1210;
   --foreground: #efe8dc;
   --ink: #efe8dc;
@@ -11,6 +12,27 @@
   --studio-bg: #121612;
   --hero-glow: rgba(196, 163, 90, 0.18);
   --paper: #1a1f1b;
+  --hero-from: #141814;
+  --hero-mid: #0c0e0c;
+  --hero-to: #151a14;
+  --hero-green: rgba(62, 90, 70, 0.25);
+}
+
+html.light {
+  --background: #f3efe6;
+  --foreground: #1a1814;
+  --ink: #1a1814;
+  --ink-muted: #6a6458;
+  --brass: #9a7428;
+  --line: rgba(26, 24, 20, 0.12);
+  --panel: rgba(26, 24, 20, 0.04);
+  --studio-bg: #ebe6dc;
+  --hero-glow: rgba(154, 116, 40, 0.2);
+  --paper: #e8e2d6;
+  --hero-from: #f6f1e8;
+  --hero-mid: #ebe4d6;
+  --hero-to: #f0ebe2;
+  --hero-green: rgba(90, 120, 80, 0.12);
 }
 
 @theme inline {
@@ -30,14 +52,13 @@ body {
   font-family: var(--font-body), system-ui, sans-serif;
 }
 
-/* Paper grain + atmosphere */
 .hero-surface {
   background:
     radial-gradient(ellipse 80% 50% at 70% 40%, var(--hero-glow), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 20% 80%, rgba(62, 90, 70, 0.25), transparent 50%),
-    linear-gradient(165deg, #141814 0%, #0c0e0c 45%, #151a14 100%);
+    radial-gradient(ellipse 60% 40% at 20% 80%, var(--hero-green), transparent 50%),
+    linear-gradient(165deg, var(--hero-from) 0%, var(--hero-mid) 45%, var(--hero-to) 100%);
   position: relative;
-  overflow: hidden;
+  overflow-x: clip;
 }
 
 .hero-surface::before {
@@ -46,41 +67,45 @@ body {
   inset: 0;
   opacity: 0.07;
   pointer-events: none;
+  overflow: hidden;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   mix-blend-mode: overlay;
 }
 
 .trading-card {
-  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  perspective: 900px;
+  overflow: visible;
 }
 
-.trading-card:hover {
-  transform: rotate3d(0.2, 1, 0, 6deg) translateY(-4px);
+.trading-card > .absolute {
+  /* Keep card face clipped, but leave room for outer sheen/shadows via parent padding */
+  transform-origin: center center;
 }
 
-.card-shine {
-  border-radius: inherit;
-  background: linear-gradient(
-    115deg,
-    transparent 30%,
-    rgba(255, 255, 255, 0.08) 45%,
-    rgba(255, 255, 255, 0.22) 50%,
-    rgba(255, 255, 255, 0.06) 55%,
-    transparent 70%
-  );
-  background-size: 220% 220%;
-  animation: foil-sweep 4.5s ease-in-out infinite;
-  mix-blend-mode: soft-light;
+/* Stronger promo sheen on the card surface */
+.trading-card .cf-overlay {
+  filter: saturate(1.65) contrast(1.2) brightness(1.12);
 }
 
-@keyframes foil-sweep {
-  0%,
-  100% {
-    background-position: 120% 40%;
-  }
-  50% {
-    background-position: -20% 60%;
-  }
+.trading-card .cf-overlay.cf-shimmer {
+  animation-duration: 7s;
+}
+
+.card-fullscreen-panel .trading-card {
+  max-width: none;
+  width: 100%;
+}
+
+.trading-card.is-exporting,
+.trading-card.is-exporting * {
+  animation: none !important;
+  transition: none !important;
+  transform: none !important;
+}
+
+.trading-card [class*="foil"],
+.trading-card .export-hide {
+  pointer-events: none;
 }
 
 @keyframes float-card {
@@ -96,6 +121,18 @@ body {
 .hero-card-float {
   animation: float-card 7s ease-in-out infinite;
   transform-origin: center;
+}
+
+.hero-carousel {
+  scroll-behavior: smooth;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-padding-inline: max(1.25rem, calc(50% - 150px));
+}
+
+.hero-carousel-item {
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
 }
 
 @keyframes fade-up {
@@ -121,13 +158,128 @@ body {
   animation: fade-up 1s ease-out 0.3s both;
 }
 
+/* Binder gallery */
+.binder-book {
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(255, 255, 255, 0.08), transparent 50%),
+    linear-gradient(145deg, #3a2a1c 0%, #2a1c12 40%, #1a120c 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 24px 48px rgba(0, 0, 0, 0.35);
+}
+
+html.light .binder-book {
+  background: linear-gradient(145deg, #5a4030 0%, #3a281c 50%, #2a1c14 100%);
+}
+
+.binder-page {
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.06) 0%, transparent 8%, transparent 92%, rgba(0, 0, 0, 0.06) 100%),
+    repeating-linear-gradient(
+      0deg,
+      #e8dfd0 0px,
+      #efe8dc 2px,
+      #e8dfd0 4px
+    );
+  min-height: 12rem;
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.08);
+}
+
+.binder-pocket {
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.35) 0%,
+    rgba(255, 255, 255, 0.12) 40%,
+    rgba(0, 0, 0, 0.04) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* Spectrum / prism format */
+.prism-border-shift {
+  background: linear-gradient(
+    125deg,
+    #ff6b9d,
+    #ffc93c,
+    #6bffb8,
+    #6bc5ff,
+    #b388ff,
+    #ff6b9d,
+    #ffc93c
+  );
+  background-size: 300% 300%;
+  animation: prism-shift 6s linear infinite;
+  opacity: 0.9;
+  mix-blend-mode: soft-light;
+}
+
+.prism-inner-sheen {
+  background: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.55) 45%,
+    rgba(200, 160, 255, 0.25) 52%,
+    transparent 70%
+  );
+  background-size: 200% 200%;
+  animation: prism-sheen 5s ease-in-out infinite;
+  mix-blend-mode: soft-light;
+}
+
+.prism-art-glint {
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.35) 48%,
+    rgba(180, 220, 255, 0.2) 52%,
+    transparent 65%
+  );
+  background-size: 220% 100%;
+  animation: prism-sheen 4s ease-in-out infinite;
+}
+
+.prism-badge {
+  background: linear-gradient(90deg, #ff6b9d, #b388ff, #6bc5ff, #6bffb8, #ffc93c);
+  background-size: 200% 100%;
+  animation: prism-shift 4s linear infinite;
+}
+
+@keyframes prism-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes prism-sheen {
+  0%,
+  100% {
+    background-position: 120% 40%;
+  }
+  50% {
+    background-position: -20% 60%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .card-shine,
+  .prism-border-shift,
+  .prism-inner-sheen,
+  .prism-art-glint,
+  .prism-badge {
+    animation: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
   .hero-card-float,
   .animate-fade-up,
   .animate-fade-up-delay,
-  .animate-fade-up-delay-2,
-  .trading-card {
+  .animate-fade-up-delay-2 {
     animation: none !important;
     transition: none !important;
   }

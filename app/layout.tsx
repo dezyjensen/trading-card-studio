@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans, Syne, Fraunces, JetBrains_Mono } from "next/font/google";
+import { ColorModeProvider } from "@/lib/color-mode";
+import { APP_DESCRIPTION, APP_NAME, APP_SLOGAN } from "@/lib/brand";
 import "./globals.css";
 
 const brand = Syne({
@@ -27,13 +29,11 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Trading Card Studio",
-  description:
-    "Turn any photo into a professionally designed trading card in seconds. Upload, customize, and download.",
+  title: `${APP_NAME} — ${APP_SLOGAN}`,
+  description: APP_DESCRIPTION,
   openGraph: {
-    title: "Trading Card Studio",
-    description:
-      "Turn any photo into a professionally designed trading card in seconds.",
+    title: APP_NAME,
+    description: APP_SLOGAN,
     type: "website",
   },
 };
@@ -46,9 +46,21 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${brand.variable} ${display.variable} ${body.variable} ${mono.variable} h-full antialiased`}
+      data-scroll-behavior="smooth"
+      className={`${brand.variable} ${display.variable} ${body.variable} ${mono.variable} dark h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <head>
+        {/* Apply saved theme before paint — avoids blank/black flash on mobile */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var m=localStorage.getItem("tcs-color-mode");if(m!=="light"&&m!=="dark"){m=window.matchMedia("(prefers-color-scheme:light)").matches?"light":"dark"}var r=document.documentElement;r.classList.toggle("dark",m==="dark");r.classList.toggle("light",m==="light");r.dataset.theme=m;r.style.colorScheme=m}catch(e){}})();`,
+          }}
+        />
+      </head>
+      <body className="min-h-full flex flex-col bg-[var(--background)] text-[var(--foreground)]">
+        <ColorModeProvider>{children}</ColorModeProvider>
+      </body>
     </html>
   );
 }

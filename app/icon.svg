@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Bold mark that stays readable at 16px: one card, thick brass rim, big foil slash -->
+  <rect width="32" height="32" rx="7" fill="#101411"/>
+  <rect x="7" y="3.5" width="18" height="25" rx="3" fill="#c4a35a"/>
+  <rect x="9" y="5.5" width="14" height="21" rx="2" fill="#171c18"/>
+  <!-- Art block -->
+  <rect x="11" y="7.5" width="10" height="9" rx="1.5" fill="#2b3530"/>
+  <!-- Big foil slash (the readable cue) -->
+  <path d="M11.5 8h9L15 16h-3.5V8Z" fill="#e4c56f"/>
+  <!-- Name bar -->
+  <rect x="11" y="18.5" width="10" height="2.75" rx="1" fill="#c4a35a"/>
+  <!-- One accent pip -->
+  <circle cx="16" cy="23.75" r="1.35" fill="#e4c56f"/>
+</svg>

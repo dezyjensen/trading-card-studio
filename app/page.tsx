@@ -1,80 +1,62 @@
-import { Studio } from "@/components/Studio";
-import { TradingCard } from "@/components/TradingCard";
-import { DEFAULT_CARD_STATE } from "@/lib/themes";
+"use client";
 
-const demoState = {
-  ...DEFAULT_CARD_STATE,
-  name: "Mochi",
-  subtitle: "Champion of naps. Collector of socks. Undefeated.",
-  themeId: "ember" as const,
-  accent: "#e8923a",
-  secondary: "#c44d2a",
-};
+import { BrandMark } from "@/components/BrandMark";
+import { Gallery } from "@/components/Gallery";
+import { HeroCarousel } from "@/components/HeroCarousel";
+import { SiteHeader } from "@/components/SiteHeader";
+import { Studio } from "@/components/Studio";
+import { APP_NAME, APP_SLOGAN, APP_TAGLINE } from "@/lib/brand";
 
 export default function Home() {
   return (
     <>
-      <header className="hero-surface relative min-h-[100svh] flex flex-col">
-        <nav className="relative z-10 flex items-center justify-between px-5 py-5 sm:px-8">
-          <span className="font-[family-name:var(--font-brand)] text-sm font-bold tracking-[0.08em] uppercase text-[var(--ink)]">
-            Trading Card Studio
-          </span>
-          <a
-            href="#studio"
-            className="text-sm text-[var(--ink-muted)] transition hover:text-[var(--brass)]"
-          >
-            Open studio
-          </a>
-        </nav>
+      <header className="hero-surface relative flex flex-col overflow-x-clip">
+        <SiteHeader />
 
-        <div className="relative z-10 mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-5 pb-16 pt-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8 lg:px-8 lg:pb-20">
-          <div className="max-w-xl">
-            <p className="animate-fade-up font-[family-name:var(--font-brand)] text-4xl font-extrabold leading-[0.95] tracking-tight text-[var(--ink)] sm:text-5xl md:text-6xl lg:text-7xl">
-              Trading Card Studio
-            </p>
-            <h1 className="animate-fade-up-delay mt-5 font-[family-name:var(--font-display)] text-2xl font-medium leading-snug text-[var(--ink)] sm:text-3xl">
-              Any photo. Instant collectible.
+        <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 pb-10 pt-1 sm:gap-8 sm:pb-12 sm:pt-2 lg:gap-10 lg:px-8 lg:pb-16 lg:pt-4">
+          <div className="relative z-20 w-full max-w-xl">
+            <h1 className="animate-fade-up text-balance text-center font-[family-name:var(--font-display)] text-[1.75rem] font-semibold leading-snug tracking-normal text-[var(--ink)] sm:text-4xl sm:leading-snug md:text-[2.75rem] lg:text-left">
+              {APP_SLOGAN}
             </h1>
-            <p className="animate-fade-up-delay mt-4 max-w-md text-base leading-relaxed text-[var(--ink-muted)] sm:text-lg">
-              Design a polished trading card of your pet, friend, or team — then
-              download and share in seconds.
+
+            <p className="animate-fade-up-delay mx-auto mt-3 max-w-md text-center text-base leading-relaxed text-[var(--ink-muted)] sm:text-lg lg:mx-0 lg:text-left">
+              {APP_TAGLINE}
             </p>
-            <div className="animate-fade-up-delay-2 mt-8 flex flex-wrap gap-3">
+
+            <div className="animate-fade-up-delay-2 mt-5 flex flex-col items-stretch gap-2 sm:mt-6 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-3 lg:justify-start">
               <a
                 href="#studio"
-                className="rounded-xl bg-[var(--brass)] px-6 py-3.5 font-[family-name:var(--font-brand)] font-semibold text-[#1a140c] transition hover:brightness-110"
+                className="min-h-12 rounded-xl bg-[var(--brass)] px-6 py-3.5 text-center font-[family-name:var(--font-brand)] font-semibold text-[#1a140c] transition hover:brightness-110"
               >
                 Start creating
               </a>
               <a
-                href="#studio"
-                className="rounded-xl border border-[var(--line)] px-6 py-3.5 font-[family-name:var(--font-brand)] font-semibold text-[var(--ink)] transition hover:border-[var(--brass)]"
+                href="#gallery"
+                className="min-h-12 rounded-xl border border-[var(--line)] px-6 py-3.5 text-center font-[family-name:var(--font-brand)] font-semibold text-[var(--ink)] transition hover:border-[var(--brass)]"
               >
-                See styles
+                Open binder
               </a>
             </div>
           </div>
 
-          <div className="relative flex justify-center lg:justify-end">
-            <div
-              className="pointer-events-none absolute -inset-8 rounded-full opacity-40 blur-3xl"
-              style={{
-                background:
-                  "radial-gradient(circle, rgba(232,146,58,0.35), transparent 65%)",
-              }}
-              aria-hidden
-            />
-            <div className="hero-card-float relative w-full max-w-[300px] sm:max-w-[320px]">
-              <TradingCard state={demoState} />
-            </div>
+          {/* Full-bleed carousel on phones so peeks feel intentional */}
+          <div className="relative z-10 -mx-5 min-w-0 sm:mx-0">
+            <HeroCarousel />
           </div>
         </div>
       </header>
 
       <Studio />
 
-      <footer className="border-t border-[var(--line)] px-5 py-8 text-center text-sm text-[var(--ink-muted)]">
-        Trading Card Studio · Make something collectible
+      <Gallery />
+
+      <footer className="border-t border-[var(--line)] px-5 py-8">
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-2 text-center text-sm text-[var(--ink-muted)]">
+          <BrandMark className="h-8 w-8 rounded-lg opacity-90" />
+          <p>
+            {APP_NAME} · {APP_SLOGAN}
+          </p>
+        </div>
       </footer>
     </>
   );
