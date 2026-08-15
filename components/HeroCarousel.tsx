@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HERO_SAMPLES, type HeroSample } from "@/lib/heroSamples";
 import { withBasePath } from "@/lib/features";
 
 const AUTO_MS = 2800;
+const COPIES = 3; // middle copy is the “real” track
 
 function sampleImageSrc(id: string) {
   return withBasePath(`/hero-samples/${id}.png`);
@@ -22,76 +23,126 @@ function applySampleTemplate(sample: HeroSample) {
   }
 }
 
+function logicalIndex(slideIndex: number) {
+  const n = HERO_SAMPLES.length;
+  return ((slideIndex % n) + n) % n;
+}
+
 export function HeroCarousel() {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const [active, setActive] = useState(0);
+  const [activeLogical, setActiveLogical] = useState(0);
   const [paused, setPaused] = useState(false);
   const userScrolling = useRef(false);
   const scrollTimeout = useRef<number | null>(null);
+  const jumping = useRef(false);
+  const ready = useRef(false);
 
-  const scrollToIndex = useCallback((index: number, smooth = true) => {
+  const slides = useMemo(
+    () =>
+      Array.from({ length: COPIES }, (_, copy) =>
+        HERO_SAMPLES.map((sample, i) => ({
+          sample,
+          key: `${copy}-${sample.id}`,
+          slideIndex: copy * HERO_SAMPLES.length + i,
+          logical: i,
+        })),
+      ).flat(),
+    [],
+  );
+
+  const middleStart = HERO_SAMPLES.length;
+
+  const scrollToSlide = useCallback((slideIndex: number, smooth = true) => {
     const scroller = scrollerRef.current;
-    const item = itemRefs.current[index];
+    const item = itemRefs.current[slideIndex];
     if (!scroller || !item) return;
     const left =
       item.offsetLeft - (scroller.clientWidth - item.clientWidth) / 2;
-    scroller.scrollTo({ left, behavior: smooth ? "smooth" : "auto" });
+    scroller.scrollTo({
+      left,
+      behavior: smooth && !jumping.current ? "smooth" : "auto",
+    });
   }, []);
 
-  const goTo = useCallback(
-    (index: number) => {
-      const next = (index + HERO_SAMPLES.length) % HERO_SAMPLES.length;
-      setActive(next);
-      scrollToIndex(next);
+  const normalizeLoop = useCallback(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller || jumping.current) return;
+
+    const center = scroller.scrollLeft + scroller.clientWidth / 2;
+    let best = middleStart;
+    let bestDist = Infinity;
+    itemRefs.current.forEach((el, i) => {
+      if (!el) return;
+      const mid = el.offsetLeft + el.clientWidth / 2;
+      const dist = Math.abs(mid - center);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = i;
+      }
+    });
+
+    const n = HERO_SAMPLES.length;
+    let next = best;
+    // Keep the viewport in the middle copy so left/right always have peeks
+    if (best < n) next = best + n;
+    else if (best >= n * 2) next = best - n;
+
+    setActiveLogical(logicalIndex(best));
+
+    if (next !== best) {
+      jumping.current = true;
+      scrollToSlide(next, false);
+      requestAnimationFrame(() => {
+        jumping.current = false;
+      });
+    }
+  }, [middleStart, scrollToSlide]);
+
+  const goLogical = useCallback(
+    (logical: number, smooth = true) => {
+      const n = HERO_SAMPLES.length;
+      const target = ((logical % n) + n) % n;
+      setActiveLogical(target);
+      // Prefer middle copy for navigation
+      scrollToSlide(middleStart + target, smooth);
     },
-    [scrollToIndex],
+    [middleStart, scrollToSlide],
   );
 
   useEffect(() => {
-    scrollToIndex(0, false);
-  }, [scrollToIndex]);
+    // Start centered on the first sample in the middle copy
+    const id = window.requestAnimationFrame(() => {
+      scrollToSlide(middleStart, false);
+      ready.current = true;
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [middleStart, scrollToSlide]);
+
+  function onScroll() {
+    if (jumping.current || !ready.current) return;
+    userScrolling.current = true;
+    if (scrollTimeout.current) window.clearTimeout(scrollTimeout.current);
+    scrollTimeout.current = window.setTimeout(() => {
+      userScrolling.current = false;
+      normalizeLoop();
+    }, 140);
+  }
+
+  const sample = HERO_SAMPLES[activeLogical];
+  const slotClass = "w-[min(42vw,168px)] sm:w-[200px]";
+  const activeRef = useRef(activeLogical);
+  activeRef.current = activeLogical;
 
   useEffect(() => {
     if (paused) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const id = window.setInterval(() => {
-      if (userScrolling.current) return;
-      setActive((prev) => {
-        const next = (prev + 1) % HERO_SAMPLES.length;
-        scrollToIndex(next);
-        return next;
-      });
+      if (userScrolling.current || jumping.current || !ready.current) return;
+      goLogical(activeRef.current + 1, true);
     }, AUTO_MS);
     return () => window.clearInterval(id);
-  }, [paused, scrollToIndex]);
-
-  function onScroll() {
-    userScrolling.current = true;
-    if (scrollTimeout.current) window.clearTimeout(scrollTimeout.current);
-    scrollTimeout.current = window.setTimeout(() => {
-      userScrolling.current = false;
-      const scroller = scrollerRef.current;
-      if (!scroller) return;
-      const center = scroller.scrollLeft + scroller.clientWidth / 2;
-      let best = 0;
-      let bestDist = Infinity;
-      itemRefs.current.forEach((el, i) => {
-        if (!el) return;
-        const mid = el.offsetLeft + el.clientWidth / 2;
-        const dist = Math.abs(mid - center);
-        if (dist < bestDist) {
-          bestDist = dist;
-          best = i;
-        }
-      });
-      setActive(best);
-    }, 120);
-  }
-
-  const sample = HERO_SAMPLES[active];
-  /** Compact on phones so the full card fits without bottom clip. */
-  const slotClass = "w-[min(42vw,168px)] sm:w-[200px]";
+  }, [paused, goLogical]);
 
   return (
     <div
@@ -119,43 +170,40 @@ export function HeroCarousel() {
         <div
           ref={scrollerRef}
           onScroll={onScroll}
-          className="hero-carousel flex snap-x snap-mandatory gap-5 overflow-x-auto py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-8 sm:py-5"
-          style={{
-            paddingInline: "max(1rem, calc(50% - 5.25rem))",
-            scrollPaddingInline: "max(1rem, calc(50% - 5.25rem))",
-          }}
+          className="hero-carousel flex snap-x snap-mandatory gap-5 overflow-x-auto py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-8 sm:py-5 px-[max(1rem,calc((100%-min(42vw,168px))/2))] sm:px-[max(1.25rem,calc((100%-200px)/2))] [scroll-padding-inline:max(1rem,calc((100%-min(42vw,168px))/2))] sm:[scroll-padding-inline:max(1.25rem,calc((100%-200px)/2))]"
           aria-label="Sample trading cards — tap one to use as a template"
           tabIndex={0}
           onKeyDown={(e) => {
             if (e.key === "ArrowRight") {
               e.preventDefault();
-              goTo(active + 1);
+              goLogical(activeLogical + 1);
             }
             if (e.key === "ArrowLeft") {
               e.preventDefault();
-              goTo(active - 1);
+              goLogical(activeLogical - 1);
             }
           }}
         >
-          {HERO_SAMPLES.map((item, i) => (
+          {slides.map((slide, i) => (
             <div
-              key={item.id}
+              key={slide.key}
               ref={(el) => {
                 itemRefs.current[i] = el;
               }}
               className={`hero-carousel-item shrink-0 snap-center transition-opacity duration-300 ${slotClass} ${
-                i === active ? "z-[1] opacity-100" : "opacity-45"
+                slide.logical === activeLogical
+                  ? "z-[1] opacity-100"
+                  : "opacity-45"
               }`}
             >
               <button
                 type="button"
                 onClick={() => {
-                  setActive(i);
-                  scrollToIndex(i);
-                  applySampleTemplate(item);
+                  goLogical(slide.logical);
+                  applySampleTemplate(slide.sample);
                 }}
                 className="group w-full rounded-xl text-left outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--brass)] focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
-                aria-label={`Use “${item.state.name}” as a template`}
+                aria-label={`Use “${slide.sample.state.name}” as a template`}
               >
                 <div
                   className="relative w-full overflow-hidden rounded-[clamp(8px,2.5vw,14px)]"
@@ -163,19 +211,19 @@ export function HeroCarousel() {
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={sampleImageSrc(item.id)}
+                    src={sampleImageSrc(slide.sample.id)}
                     alt=""
                     width={720}
                     height={1008}
                     decoding="async"
-                    fetchPriority={i < 3 ? "high" : "low"}
+                    fetchPriority={i < middleStart + 3 ? "high" : "low"}
                     draggable={false}
                     className="pointer-events-none h-full w-full object-cover drop-shadow-[0_14px_28px_rgba(0,0,0,0.28)]"
                   />
                 </div>
                 <span
                   className={`mt-1.5 block text-center text-[11px] font-semibold text-[var(--brass)] transition sm:mt-2 sm:text-xs ${
-                    i === active
+                    slide.logical === activeLogical
                       ? "opacity-100"
                       : "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"
                   }`}
@@ -190,8 +238,8 @@ export function HeroCarousel() {
         <div className="mt-1 flex items-center justify-center gap-3 px-5 sm:mt-2">
           <button
             type="button"
-            onClick={() => goTo(active - 1)}
-            className="hidden min-h-10 rounded-lg border border-[var(--line)] bg-[var(--panel)]/80 px-3 py-2 text-sm font-semibold text-[var(--ink)] backdrop-blur transition hover:border-[var(--brass)] sm:inline-flex"
+            onClick={() => goLogical(activeLogical - 1)}
+            className="hidden min-h-10 rounded-lg border border-[var(--line)] bg-[var(--panel)]/80 px-3 py-2 text-sm font-semibold text-[var(--ink)] backdrop-blur transition hover:border-[var(--brass)] active:scale-95 sm:inline-flex"
             aria-label="Previous sample card"
           >
             ←
@@ -206,11 +254,11 @@ export function HeroCarousel() {
                 key={item.id}
                 type="button"
                 role="tab"
-                aria-selected={i === active}
+                aria-selected={i === activeLogical}
                 aria-label={item.caption}
-                onClick={() => goTo(i)}
+                onClick={() => goLogical(i)}
                 className={`h-2 rounded-full transition-all ${
-                  i === active
+                  i === activeLogical
                     ? "w-6 bg-[var(--brass)]"
                     : "w-2 bg-[var(--ink-muted)]/40 hover:bg-[var(--ink-muted)]/70"
                 }`}
@@ -219,8 +267,8 @@ export function HeroCarousel() {
           </div>
           <button
             type="button"
-            onClick={() => goTo(active + 1)}
-            className="hidden min-h-10 rounded-lg border border-[var(--line)] bg-[var(--panel)]/80 px-3 py-2 text-sm font-semibold text-[var(--ink)] backdrop-blur transition hover:border-[var(--brass)] sm:inline-flex"
+            onClick={() => goLogical(activeLogical + 1)}
+            className="hidden min-h-10 rounded-lg border border-[var(--line)] bg-[var(--panel)]/80 px-3 py-2 text-sm font-semibold text-[var(--ink)] backdrop-blur transition hover:border-[var(--brass)] active:scale-95 sm:inline-flex"
             aria-label="Next sample card"
           >
             →

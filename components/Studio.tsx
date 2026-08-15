@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent,
+} from "react";
 import { flushSync } from "react-dom";
 import { CardCustomizer } from "@/components/CardCustomizer";
 import { CardFullscreen } from "@/components/CardFullscreen";
@@ -29,6 +35,24 @@ import {
   type CardState,
   type ThemeId,
 } from "@/lib/themes";
+
+const pressProps = {
+  onPointerDown: (e: PointerEvent<HTMLButtonElement>) => {
+    e.currentTarget.dataset.pressed = "true";
+  },
+  onPointerUp: (e: PointerEvent<HTMLButtonElement>) => {
+    delete e.currentTarget.dataset.pressed;
+  },
+  onPointerLeave: (e: PointerEvent<HTMLButtonElement>) => {
+    delete e.currentTarget.dataset.pressed;
+  },
+  onPointerCancel: (e: PointerEvent<HTMLButtonElement>) => {
+    delete e.currentTarget.dataset.pressed;
+  },
+};
+
+const pressClass =
+  "transition duration-150 active:scale-[0.95] active:brightness-90 active:shadow-inner data-[pressed]:scale-[0.95] data-[pressed]:brightness-90 data-[pressed]:shadow-inner";
 
 export function Studio() {
   const [state, setState] = useState<CardState>(DEFAULT_CARD_STATE);
@@ -276,7 +300,8 @@ export function Studio() {
           type="button"
           disabled={saveBusy}
           onClick={() => void handleSave(false)}
-          className="min-h-12 rounded-xl bg-[var(--brass)] px-3 py-3 font-[family-name:var(--font-brand)] text-sm font-semibold text-[#1a140c] disabled:opacity-60 sm:text-base"
+          {...pressProps}
+          className={`min-h-12 rounded-xl bg-[var(--brass)] px-3 py-3 font-[family-name:var(--font-brand)] text-sm font-semibold text-[#1a140c] shadow-sm hover:brightness-110 disabled:opacity-60 sm:text-base ${pressClass}`}
         >
           {saveBusy ? "Saving…" : "Save to binder"}
         </button>
@@ -306,7 +331,8 @@ export function Studio() {
             setActiveSaveIdState(null);
             setSaveMessage("Started a new card");
           }}
-          className="min-h-10 rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-semibold text-[var(--ink-muted)]"
+          {...pressProps}
+          className={`min-h-10 rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-semibold text-[var(--ink-muted)] hover:border-[var(--brass)] hover:text-[var(--ink)] data-[pressed]:bg-[var(--background)] active:bg-[var(--background)] ${pressClass}`}
         >
           New card
         </button>
@@ -315,7 +341,8 @@ export function Studio() {
             type="button"
             disabled={saveBusy}
             onClick={() => void handleSave(true)}
-            className="min-h-10 col-span-2 rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-semibold text-[var(--ink)]"
+            {...pressProps}
+            className={`min-h-10 col-span-2 rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:border-[var(--brass)] data-[pressed]:bg-[var(--background)] active:bg-[var(--background)] disabled:opacity-60 ${pressClass}`}
           >
             Save as new
           </button>
@@ -407,7 +434,7 @@ export function Studio() {
             </div>
           </div>
           <p className="text-center text-xs text-[var(--ink-muted)]">
-            Tap preview for full screen · exports at 2×
+            Tap preview for full screen
           </p>
 
           {actionBar}

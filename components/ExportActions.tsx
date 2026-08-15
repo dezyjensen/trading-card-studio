@@ -1,7 +1,26 @@
 "use client";
 
-import { useEffect, useState, type RefObject } from "react";
+import { useEffect, useState, type PointerEvent, type RefObject } from "react";
 import { canShareFiles, exportCardPng, shareCardPng } from "@/lib/exportCard";
+
+/** Reliable press styling on touch devices (CSS :active is flaky on iOS). */
+const pressProps = {
+  onPointerDown: (e: PointerEvent<HTMLButtonElement>) => {
+    e.currentTarget.dataset.pressed = "true";
+  },
+  onPointerUp: (e: PointerEvent<HTMLButtonElement>) => {
+    delete e.currentTarget.dataset.pressed;
+  },
+  onPointerLeave: (e: PointerEvent<HTMLButtonElement>) => {
+    delete e.currentTarget.dataset.pressed;
+  },
+  onPointerCancel: (e: PointerEvent<HTMLButtonElement>) => {
+    delete e.currentTarget.dataset.pressed;
+  },
+};
+
+const pressClass =
+  "transition duration-150 active:scale-[0.95] active:brightness-90 active:shadow-inner data-[pressed]:scale-[0.95] data-[pressed]:brightness-90 data-[pressed]:shadow-inner";
 
 type ExportActionsProps = {
   cardRef: RefObject<HTMLDivElement | null>;
@@ -102,7 +121,8 @@ export function ExportActions({
       type="button"
       onClick={() => void handleSavePhoto()}
       disabled={busy}
-      className={`min-h-12 rounded-xl border border-[var(--line)] bg-[var(--background)] px-4 py-3 font-[family-name:var(--font-brand)] font-semibold text-[var(--ink)] transition hover:border-[var(--brass)] disabled:opacity-60 ${photoButtonOnly ? "w-full" : "flex-1"} ${className}`}
+      {...pressProps}
+      className={`min-h-12 rounded-xl border border-[var(--line)] bg-[var(--background)] px-4 py-3 font-[family-name:var(--font-brand)] font-semibold text-[var(--ink)] shadow-sm transition duration-150 hover:border-[var(--brass)] hover:brightness-[0.98] disabled:opacity-60 ${pressClass} ${photoButtonOnly ? "w-full" : "flex-1"} ${className}`}
     >
       {primaryLabel}
     </button>
@@ -129,7 +149,8 @@ export function ExportActions({
           type="button"
           onClick={() => void handleShare()}
           disabled={busy}
-          className="min-h-12 flex-1 rounded-xl border border-[var(--line)] px-4 py-3 text-sm font-semibold text-[var(--ink-muted)] transition hover:border-[var(--brass)]/50 disabled:opacity-60"
+          {...pressProps}
+          className={`min-h-12 flex-1 rounded-xl border border-[var(--line)] px-4 py-3 text-sm font-semibold text-[var(--ink-muted)] hover:border-[var(--brass)] hover:text-[var(--ink)] disabled:opacity-60 ${pressClass}`}
         >
           {busy ? "Working…" : "Share"}
         </button>
@@ -209,9 +230,10 @@ export function ShareCardButton({
       type="button"
       onClick={() => void handleShare()}
       disabled={busy || disabled}
+      {...pressProps}
       className={
         className ||
-        "min-h-10 w-full rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-semibold text-[var(--ink-muted)] disabled:opacity-60"
+        `min-h-10 w-full rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-semibold text-[var(--ink-muted)] hover:border-[var(--brass)] hover:text-[var(--ink)] data-[pressed]:bg-[var(--background)] active:bg-[var(--background)] disabled:opacity-60 ${pressClass}`
       }
     >
       {busy ? "Sharing…" : "Share"}

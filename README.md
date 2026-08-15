@@ -1,8 +1,18 @@
 # Keepsleeve
 
-Turn any photo into a collectible card.
+**[Live demo →](https://dezyjensen.github.io/trading-card-studio/)**
 
-Upload a photo, pick a style (Aurora, Ember, Noir, Retro Arcade, or Garden), customize colors and text, then download a crisp PNG — or share it from your device.
+Turn any photo into a one-of-one trading card.
+
+Keepsleeve is a browser studio for making collectible-style cards from your own photos. Crop your shot, pick a finish (foil, tilt, specular highlights), customize name/text/colors, preview full screen, save cards to a personal binder, and download or share a crisp PNG to your phone.
+
+The hero carousel shows sample templates you can tap to start from — then edit everything in the studio.
+
+## Demo
+
+Static GitHub Pages build (no sign-in; binder saves stay in your browser via `localStorage`):
+
+**https://dezyjensen.github.io/trading-card-studio/**
 
 ## Run locally
 
@@ -43,15 +53,35 @@ The static build writes to `out/` with base path `/trading-card-studio` (for pro
 
 1. Repo **Settings → Pages → Build and deployment → Source: GitHub Actions**
 2. Push to `main` (or run the **Deploy static demo to GitHub Pages** workflow manually)
-3. Demo URL: `https://<user>.github.io/trading-card-studio/`
+3. Demo: [https://dezyjensen.github.io/trading-card-studio/](https://dezyjensen.github.io/trading-card-studio/)
 
-## Stack
+## Stack & tools
 
-- Next.js (App Router)
+**App**
+
+- [Next.js](https://nextjs.org/) (App Router) + React 19
 - TypeScript
-- Tailwind CSS
+- [Tailwind CSS](https://tailwindcss.com/) v4
+
+**Card experience**
+
 - [`card-foil`](https://github.com/sawyerWeld/card-foil) — TCG-inspired foil / tilt / specular finishes
-- [`modern-screenshot`](https://github.com/qq15725/modern-screenshot) — reliable 2× PNG export
+- [`react-easy-crop`](https://github.com/ValentinH/react-easy-crop) — photo crop & zoom
+- [`modern-screenshot`](https://github.com/qq15725/modern-screenshot) — reliable 2× PNG export for download / share
+
+**Binder / UI**
+
+- [`@dnd-kit`](https://dndkit.com/) — drag-and-drop binder layout
+
+**Full product mode** (when `STATIC_DEMO` is `false`)
+
+- [Drizzle ORM](https://orm.drizzle.team/) + Postgres — accounts and saved cards
+- `bcryptjs` — password hashing
+
+**Tooling**
+
+- Playwright — capture hero sample PNGs (`npm run capture:hero`)
+- ESLint + TypeScript — lint and typecheck
 
 ## License
 
