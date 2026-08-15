@@ -57,6 +57,12 @@ export default function RootLayout({
             __html: `(function(){try{var m=localStorage.getItem("tcs-color-mode");if(m!=="light"&&m!=="dark"){m=window.matchMedia("(prefers-color-scheme:light)").matches?"light":"dark"}var r=document.documentElement;r.classList.toggle("dark",m==="dark");r.classList.toggle("light",m==="light");r.dataset.theme=m;r.style.colorScheme=m}catch(e){}})();`,
           }}
         />
+        {/* Refresh should land at the top — not restored mid-page / #studio */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{if("scrollRestoration" in history)history.scrollRestoration="manual";var n=performance.getEntriesByType("navigation")[0];if(n&&n.type==="reload"){if(location.hash)history.replaceState(null,"",location.pathname+location.search);window.scrollTo(0,0)}}catch(e){}})();`,
+          }}
+        />
       </head>
       <body className="min-h-full flex flex-col bg-[var(--background)] text-[var(--foreground)]">
         <ColorModeProvider>{children}</ColorModeProvider>

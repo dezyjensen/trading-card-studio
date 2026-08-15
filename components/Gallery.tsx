@@ -23,6 +23,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { BinderCardTile } from "@/components/BinderCardTile";
 import { CardFullscreen } from "@/components/CardFullscreen";
 import {
+  getAllSaves,
+  getBinderOrder,
+  deleteSavedCard,
+  setActiveSaveId,
+  setBinderOrder,
+  SAVES_CHANGED_EVENT,
+  USER_CHANGED_EVENT,
+  notifySavesChanged,
+} from "@/lib/saves";
+import {
+  deleteRemoteCard,
   fetchBinderOrder,
   fetchMe,
   listRemoteCards,
@@ -31,15 +42,7 @@ import {
   type ApiSavedCard,
 } from "@/lib/api/client";
 import { BACKEND_ENABLED, DEMO_USER_ID, STATIC_DEMO } from "@/lib/features";
-import {
-  getAllSaves,
-  getBinderOrder,
-  setActiveSaveId,
-  setBinderOrder,
-  SAVES_CHANGED_EVENT,
-  USER_CHANGED_EVENT,
-} from "@/lib/saves";
-import { RARITIES, type CardState } from "@/lib/themes";
+import { RARITIES } from "@/lib/themes";
 
 type SavedCard = ApiSavedCard;
 
@@ -70,7 +73,7 @@ export function Gallery() {
   const [binderOrder, setBinderOrderState] = useState<string[]>([]);
   const [sort, setSort] = useState<SortMode>("binder");
   const [page, setPage] = useState(0);
-  const [preview, setPreview] = useState<CardState | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -224,6 +227,27 @@ export function Gallery() {
   }
 
   const activeSave = activeId ? saveMap.get(activeId) : null;
+  const previewSave = previewId ? saveMap.get(previewId) : null;
+
+  async function handleDelete(save: SavedCard) {
+    const label = save.name?.trim() || "this card";
+    if (!window.confirm(`Delete “${label}” from your binder?`)) return;
+    if (previewId === save.id) setPreviewId(null);
+
+    if (STATIC_DEMO || !BACKEND_ENABLED) {
+      deleteSavedCard(DEMO_USER_ID, save.id);
+    } else {
+      try {
+        await deleteRemoteCard(save.id);
+        notifySavesChanged();
+      } catch (err) {
+        console.error(err);
+        window.alert("Could not delete card. Try again.");
+        return;
+      }
+    }
+    await refresh();
+  }
 
   return (
     <section
@@ -240,8 +264,8 @@ export function Gallery() {
               Binder gallery
             </h2>
             <p className="mt-2 max-w-lg text-[var(--ink-muted)]">
-              Your saved cards as pocket art — tap to view the full card. Drag
-              to rearrange in binder order.
+              Your saved cards as pocket art — expand to preview, delete to
+              remove, or edit in the studio. Drag to rearrange in binder order.
             </p>
           </div>
 
@@ -350,7 +374,8 @@ export function Gallery() {
                             id={id}
                             disabled={!canDrag}
                             save={save}
-                            onOpen={() => setPreview(save.state)}
+                            onOpen={() => setPreviewId(save.id)}
+                            onDelete={() => void handleDelete(save)}
                             onEdit={() => {
                               if (!userId) return;
                               if (STATIC_DEMO || !BACKEND_ENABLED) {
@@ -417,11 +442,11 @@ export function Gallery() {
         )}
       </div>
 
-      {preview && (
+      {previewSave && (
         <CardFullscreen
-          state={preview}
-          open={Boolean(preview)}
-          onClose={() => setPreview(null)}
+          state={previewSave.state}
+          open={Boolean(previewSave)}
+          onClose={() => setPreviewId(null)}
         />
       )}
     </section>
@@ -446,18 +471,61 @@ function BinderPocket({
   );
 }
 
+function ExpandIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <polyline points="15 3 21 3 21 9" />
+      <polyline points="9 21 3 21 3 15" />
+      <line x1="21" y1="3" x2="14" y2="10" />
+      <line x1="3" y1="21" x2="10" y2="14" />
+    </svg>
+  );
+}
+
+function TrashIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+  );
+}
+
 function SortablePocket({
   id,
   save,
   disabled,
   onOpen,
   onEdit,
+  onDelete,
 }: {
   id: string;
   save: SavedCard;
   disabled: boolean;
   onOpen: () => void;
   onEdit: () => void;
+  onDelete: () => void;
 }) {
   const {
     attributes,
@@ -481,21 +549,49 @@ function SortablePocket({
       style={style}
       className="binder-pocket rounded-lg p-1 sm:p-1.5"
     >
-      <button
-        type="button"
-        className={`relative block w-full overflow-hidden rounded-md text-left ${
-          disabled ? "" : "cursor-grab active:cursor-grabbing"
-        }`}
-        onClick={onOpen}
-        {...attributes}
-        {...listeners}
-      >
-        <BinderCardTile
-          state={save.state}
-          name={save.name}
-          collectorNumber={save.collectorNumber}
-        />
-      </button>
+      <div className="relative">
+        <button
+          type="button"
+          className={`relative block w-full overflow-hidden rounded-md text-left ${
+            disabled ? "" : "cursor-grab active:cursor-grabbing"
+          }`}
+          onClick={onOpen}
+          aria-label={`Expand “${save.name || "card"}”`}
+          {...attributes}
+          {...listeners}
+        >
+          <BinderCardTile
+            state={save.state}
+            name={save.name}
+            collectorNumber={save.collectorNumber}
+          />
+        </button>
+
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between p-1 sm:p-1.5">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-md bg-black/65 text-white/90 shadow-sm backdrop-blur-sm transition hover:bg-red-600 hover:text-white sm:h-8 sm:w-8"
+            aria-label={`Delete “${save.name || "card"}” from binder`}
+          >
+            <TrashIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpen();
+            }}
+            className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-md bg-black/65 text-white/90 shadow-sm backdrop-blur-sm transition hover:bg-[var(--brass)] hover:text-[#1a140c] sm:h-8 sm:w-8"
+            aria-label={`Expand “${save.name || "card"}” to full screen`}
+          >
+            <ExpandIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          </button>
+        </div>
+      </div>
       <button
         type="button"
         onClick={onEdit}

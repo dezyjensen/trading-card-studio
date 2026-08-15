@@ -418,7 +418,7 @@ export function Studio() {
                   setFullscreen(true);
                 }
               }}
-              className="group w-full max-w-[min(300px,calc((100vh-7rem)*5/7))] cursor-zoom-in outline-none focus-visible:ring-2 focus-visible:ring-[var(--brass)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--studio-bg)]"
+              className="group relative w-full max-w-[min(300px,calc((100vh-7rem)*5/7))] cursor-zoom-in outline-none focus-visible:ring-2 focus-visible:ring-[var(--brass)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--studio-bg)]"
               aria-label="Open full screen card preview"
             >
               <div
@@ -431,6 +431,26 @@ export function Studio() {
                   forExport={exporting}
                 />
               </div>
+              <span
+                className="pointer-events-none absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-lg bg-black/55 text-white shadow-sm backdrop-blur-sm transition group-hover:bg-[var(--brass)] group-hover:text-[#1a140c]"
+                aria-hidden
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-4 w-4"
+                >
+                  <polyline points="15 3 21 3 21 9" />
+                  <polyline points="9 21 3 21 3 15" />
+                  <line x1="21" y1="3" x2="14" y2="10" />
+                  <line x1="3" y1="21" x2="10" y2="14" />
+                </svg>
+              </span>
             </div>
           </div>
           <p className="text-center text-xs text-[var(--ink-muted)]">

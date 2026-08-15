@@ -1,5 +1,6 @@
 "use client";
 
+import { useLayoutEffect } from "react";
 import { BrandMark } from "@/components/BrandMark";
 import { Gallery } from "@/components/Gallery";
 import { HeroCarousel } from "@/components/HeroCarousel";
@@ -8,6 +9,25 @@ import { Studio } from "@/components/Studio";
 import { APP_NAME, APP_SLOGAN, APP_TAGLINE } from "@/lib/brand";
 
 export default function Home() {
+  useLayoutEffect(() => {
+    if ("scrollRestoration" in history) {
+      history.scrollRestoration = "manual";
+    }
+    const nav = performance.getEntriesByType("navigation")[0] as
+      | PerformanceNavigationTiming
+      | undefined;
+    if (nav?.type === "reload") {
+      if (window.location.hash) {
+        history.replaceState(
+          null,
+          "",
+          `${window.location.pathname}${window.location.search}`,
+        );
+      }
+      window.scrollTo(0, 0);
+    }
+  }, []);
+
   return (
     <>
       <header className="hero-surface relative flex flex-col overflow-x-clip">

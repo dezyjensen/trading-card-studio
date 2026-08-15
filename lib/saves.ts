@@ -198,6 +198,21 @@ export function deleteSavedCard(userId: string, saveId: string) {
   if (getActiveSaveId(userId) === saveId) {
     setActiveSaveId(userId, next[0]?.id ?? null);
   }
+  try {
+    const raw = localStorage.getItem(binderKey(userId));
+    if (raw) {
+      const order = JSON.parse(raw) as string[];
+      if (Array.isArray(order)) {
+        localStorage.setItem(
+          binderKey(userId),
+          JSON.stringify(order.filter((id) => id !== saveId)),
+        );
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  notifySavesChanged();
 }
 
 export function newBlankCard(illustrator?: string): CardState {

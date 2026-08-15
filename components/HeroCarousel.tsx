@@ -30,8 +30,6 @@ function applySampleTemplate(sample: HeroSample) {
   const studio = document.getElementById("studio");
   if (studio) {
     studio.scrollIntoView({ behavior: "smooth", block: "start" });
-  } else {
-    window.location.hash = "studio";
   }
 }
 
