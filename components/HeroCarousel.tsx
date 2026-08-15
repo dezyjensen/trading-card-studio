@@ -1,11 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type TransitionEvent as ReactTransitionEvent,
+} from "react";
 import { HERO_SAMPLES, type HeroSample } from "@/lib/heroSamples";
 import { withBasePath } from "@/lib/features";
 
-const AUTO_MS = 2800;
-const COPIES = 3; // middle copy is the “real” track
+const AUTO_MS = 3200;
+const COPIES = 3;
+const N = HERO_SAMPLES.length;
+/** Start on the middle copy so left/right always have neighbors */
+const START = N;
 
 function sampleImageSrc(id: string) {
   return withBasePath(`/hero-samples/${id}.png`);
@@ -23,20 +35,30 @@ function applySampleTemplate(sample: HeroSample) {
   }
 }
 
-function logicalIndex(slideIndex: number) {
-  const n = HERO_SAMPLES.length;
-  return ((slideIndex % n) + n) % n;
+/** After a slide animation, snap the index into the middle copy (same visual). */
+function wrapIndex(i: number) {
+  return ((i % N) + N) % N + N;
 }
 
 export function HeroCarousel() {
-  const scrollerRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const [activeLogical, setActiveLogical] = useState(0);
+  const [index, setIndex] = useState(START);
+  const [tx, setTx] = useState(0);
+  const [animate, setAnimate] = useState(false);
+  const [ready, setReady] = useState(false);
   const [paused, setPaused] = useState(false);
-  const userScrolling = useRef(false);
-  const scrollTimeout = useRef<number | null>(null);
-  const jumping = useRef(false);
-  const ready = useRef(false);
+  const [drag, setDrag] = useState(0);
+  const dragRef = useRef<{
+    active: boolean;
+    startX: number;
+    lastX: number;
+    dragging: boolean;
+  } | null>(null);
+  const indexRef = useRef(index);
+  indexRef.current = index;
+  const suppressClick = useRef(false);
 
   const slides = useMemo(
     () =>
@@ -44,112 +66,134 @@ export function HeroCarousel() {
         HERO_SAMPLES.map((sample, i) => ({
           sample,
           key: `${copy}-${sample.id}`,
-          slideIndex: copy * HERO_SAMPLES.length + i,
           logical: i,
         })),
       ).flat(),
     [],
   );
 
-  const middleStart = HERO_SAMPLES.length;
-
-  const scrollToSlide = useCallback((slideIndex: number, smooth = true) => {
-    const scroller = scrollerRef.current;
-    const item = itemRefs.current[slideIndex];
-    if (!scroller || !item) return;
-    const left =
-      item.offsetLeft - (scroller.clientWidth - item.clientWidth) / 2;
-    scroller.scrollTo({
-      left,
-      behavior: smooth && !jumping.current ? "smooth" : "auto",
-    });
-  }, []);
-
-  const normalizeLoop = useCallback(() => {
-    const scroller = scrollerRef.current;
-    if (!scroller || jumping.current) return;
-
-    const center = scroller.scrollLeft + scroller.clientWidth / 2;
-    let best = middleStart;
-    let bestDist = Infinity;
-    itemRefs.current.forEach((el, i) => {
-      if (!el) return;
-      const mid = el.offsetLeft + el.clientWidth / 2;
-      const dist = Math.abs(mid - center);
-      if (dist < bestDist) {
-        bestDist = dist;
-        best = i;
-      }
-    });
-
-    const n = HERO_SAMPLES.length;
-    let next = best;
-    // Keep the viewport in the middle copy so left/right always have peeks
-    if (best < n) next = best + n;
-    else if (best >= n * 2) next = best - n;
-
-    setActiveLogical(logicalIndex(best));
-
-    if (next !== best) {
-      jumping.current = true;
-      scrollToSlide(next, false);
-      requestAnimationFrame(() => {
-        jumping.current = false;
-      });
-    }
-  }, [middleStart, scrollToSlide]);
-
-  const goLogical = useCallback(
-    (logical: number, smooth = true) => {
-      const n = HERO_SAMPLES.length;
-      const target = ((logical % n) + n) % n;
-      setActiveLogical(target);
-      // Prefer middle copy for navigation
-      scrollToSlide(middleStart + target, smooth);
-    },
-    [middleStart, scrollToSlide],
-  );
-
-  useEffect(() => {
-    // Start centered on the first sample in the middle copy
-    const id = window.requestAnimationFrame(() => {
-      scrollToSlide(middleStart, false);
-      ready.current = true;
-    });
-    return () => window.cancelAnimationFrame(id);
-  }, [middleStart, scrollToSlide]);
-
-  function onScroll() {
-    if (jumping.current || !ready.current) return;
-    userScrolling.current = true;
-    if (scrollTimeout.current) window.clearTimeout(scrollTimeout.current);
-    scrollTimeout.current = window.setTimeout(() => {
-      userScrolling.current = false;
-      normalizeLoop();
-    }, 140);
-  }
-
+  const activeLogical = ((index % N) + N) % N;
   const sample = HERO_SAMPLES[activeLogical];
   const slotClass = "w-[min(42vw,168px)] sm:w-[200px]";
-  const activeRef = useRef(activeLogical);
-  activeRef.current = activeLogical;
+
+  const measureTx = useCallback((slideIndex: number) => {
+    const viewport = viewportRef.current;
+    const item = itemRefs.current[slideIndex];
+    if (!viewport || !item) return 0;
+    return (
+      viewport.clientWidth / 2 - (item.offsetLeft + item.clientWidth / 2)
+    );
+  }, []);
+
+  // Keep translate in sync with the active slide (animation flag is set by callers)
+  useLayoutEffect(() => {
+    setTx(measureTx(index));
+    setReady(true);
+  }, [index, measureTx]);
 
   useEffect(() => {
-    if (paused) return;
+    const onResize = () => {
+      setAnimate(false);
+      setTx(measureTx(indexRef.current));
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [measureTx]);
+
+  const goBy = useCallback((delta: number) => {
+    setDrag(0);
+    setAnimate(true);
+    setIndex((i) => i + delta);
+  }, []);
+
+  const goToLogical = useCallback((logical: number) => {
+    const target = ((logical % N) + N) % N;
+    const current = indexRef.current;
+    const base = Math.floor(current / N) * N;
+    let next = base + target;
+    const alt = next <= current ? next + N : next - N;
+    if (Math.abs(alt - current) < Math.abs(next - current)) next = alt;
+    if (next === current) return;
+    setDrag(0);
+    setAnimate(true);
+    setIndex(next);
+  }, []);
+
+  function onTransitionEnd(e: ReactTransitionEvent<HTMLDivElement>) {
+    if (e.target !== trackRef.current) return;
+    if (e.propertyName !== "transform") return;
+    const current = indexRef.current;
+    const wrapped = wrapIndex(current);
+    if (wrapped !== current) {
+      setAnimate(false);
+      setIndex(wrapped);
+    }
+  }
+
+  useEffect(() => {
+    if (paused || !ready) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const id = window.setInterval(() => {
-      if (userScrolling.current || jumping.current || !ready.current) return;
-      goLogical(activeRef.current + 1, true);
+      if (dragRef.current?.active) return;
+      goBy(1);
     }, AUTO_MS);
     return () => window.clearInterval(id);
-  }, [paused, goLogical]);
+  }, [paused, ready, goBy]);
+
+  function onPointerDown(e: ReactPointerEvent) {
+    if (e.button !== 0) return;
+    dragRef.current = {
+      active: true,
+      startX: e.clientX,
+      lastX: e.clientX,
+      dragging: false,
+    };
+    setPaused(true);
+    setAnimate(false);
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  }
+
+  function onPointerMove(e: ReactPointerEvent) {
+    const d = dragRef.current;
+    if (!d?.active) return;
+    const dx = e.clientX - d.startX;
+    if (!d.dragging && Math.abs(dx) > 8) d.dragging = true;
+    if (d.dragging) {
+      d.lastX = e.clientX;
+      setDrag(dx);
+    }
+  }
+
+  function onPointerUp(e: ReactPointerEvent) {
+    const d = dragRef.current;
+    dragRef.current = null;
+    if (!d) return;
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      /* already released */
+    }
+    const dx = d.dragging ? e.clientX - d.startX : 0;
+    const threshold = Math.min(
+      64,
+      (viewportRef.current?.clientWidth ?? 320) * 0.18,
+    );
+    setDrag(0);
+    if (d.dragging) suppressClick.current = true;
+    if (dx <= -threshold) goBy(1);
+    else if (dx >= threshold) goBy(-1);
+    else {
+      setAnimate(true);
+      setTx(measureTx(indexRef.current));
+    }
+    window.setTimeout(() => setPaused(false), 1200);
+  }
 
   return (
     <div
       className="relative w-full min-w-0"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
-      onTouchStart={() => setPaused(true)}
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node)) {
@@ -168,77 +212,102 @@ export function HeroCarousel() {
 
       <div className="relative">
         <div
-          ref={scrollerRef}
-          onScroll={onScroll}
-          className="hero-carousel flex snap-x snap-mandatory gap-5 overflow-x-auto py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-8 sm:py-5 px-[max(1rem,calc((100%-min(42vw,168px))/2))] sm:px-[max(1.25rem,calc((100%-200px)/2))] [scroll-padding-inline:max(1rem,calc((100%-min(42vw,168px))/2))] sm:[scroll-padding-inline:max(1.25rem,calc((100%-200px)/2))]"
+          ref={viewportRef}
+          className={`relative cursor-grab overflow-hidden py-2 touch-pan-y select-none active:cursor-grabbing sm:py-5 transition-opacity duration-150 ${
+            ready ? "opacity-100" : "opacity-0"
+          }`}
           aria-label="Sample trading cards — tap one to use as a template"
           tabIndex={0}
           onKeyDown={(e) => {
             if (e.key === "ArrowRight") {
               e.preventDefault();
-              goLogical(activeLogical + 1);
+              goBy(1);
             }
             if (e.key === "ArrowLeft") {
               e.preventDefault();
-              goLogical(activeLogical - 1);
+              goBy(-1);
             }
           }}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
         >
-          {slides.map((slide, i) => (
-            <div
-              key={slide.key}
-              ref={(el) => {
-                itemRefs.current[i] = el;
-              }}
-              className={`hero-carousel-item shrink-0 snap-center transition-opacity duration-300 ${slotClass} ${
-                slide.logical === activeLogical
-                  ? "z-[1] opacity-100"
-                  : "opacity-45"
-              }`}
-            >
-              <button
-                type="button"
-                onClick={() => {
-                  goLogical(slide.logical);
-                  applySampleTemplate(slide.sample);
+          <div
+            ref={trackRef}
+            className="flex w-max gap-5 will-change-transform sm:gap-8"
+            style={{
+              transform: `translate3d(${tx + drag}px, 0, 0)`,
+              transition:
+                animate && drag === 0
+                  ? "transform 420ms cubic-bezier(0.22, 1, 0.36, 1)"
+                  : "none",
+            }}
+            onTransitionEnd={onTransitionEnd}
+          >
+            {slides.map((slide, i) => (
+              <div
+                key={slide.key}
+                ref={(el) => {
+                  itemRefs.current[i] = el;
                 }}
-                className="group w-full rounded-xl text-left outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--brass)] focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
-                aria-label={`Use “${slide.sample.state.name}” as a template`}
+                className={`hero-carousel-item shrink-0 transition-opacity duration-300 ${slotClass} ${
+                  slide.logical === activeLogical
+                    ? "z-[1] opacity-100"
+                    : "opacity-45"
+                }`}
               >
-                <div
-                  className="relative w-full overflow-hidden rounded-[clamp(8px,2.5vw,14px)]"
-                  style={{ aspectRatio: "5 / 7" }}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (suppressClick.current) {
+                      suppressClick.current = false;
+                      return;
+                    }
+                    if (slide.logical !== activeLogical) {
+                      goToLogical(slide.logical);
+                      return;
+                    }
+                    applySampleTemplate(slide.sample);
+                  }}
+                  className="group w-full rounded-xl text-left outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--brass)] focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+                  aria-label={`Use “${slide.sample.state.name}” as a template`}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={sampleImageSrc(slide.sample.id)}
-                    alt=""
-                    width={720}
-                    height={1008}
-                    decoding="async"
-                    fetchPriority={i < middleStart + 3 ? "high" : "low"}
-                    draggable={false}
-                    className="pointer-events-none h-full w-full object-cover drop-shadow-[0_14px_28px_rgba(0,0,0,0.28)]"
-                  />
-                </div>
-                <span
-                  className={`mt-1.5 block text-center text-[11px] font-semibold text-[var(--brass)] transition sm:mt-2 sm:text-xs ${
-                    slide.logical === activeLogical
-                      ? "opacity-100"
-                      : "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"
-                  }`}
-                >
-                  Use as template
-                </span>
-              </button>
-            </div>
-          ))}
+                  <div
+                    className="relative w-full overflow-hidden rounded-[clamp(8px,2.5vw,14px)]"
+                    style={{ aspectRatio: "5 / 7" }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={sampleImageSrc(slide.sample.id)}
+                      alt=""
+                      width={720}
+                      height={1008}
+                      decoding="async"
+                      fetchPriority={i >= START && i < START + 3 ? "high" : "low"}
+                      draggable={false}
+                      className="pointer-events-none h-full w-full object-cover drop-shadow-[0_14px_28px_rgba(0,0,0,0.28)]"
+                    />
+                  </div>
+                  <span
+                    className={`mt-1.5 block text-center text-[11px] font-semibold text-[var(--brass)] transition sm:mt-2 sm:text-xs ${
+                      slide.logical === activeLogical
+                        ? "opacity-100"
+                        : "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"
+                    }`}
+                  >
+                    Use as template
+                  </span>
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="mt-1 flex items-center justify-center gap-3 px-5 sm:mt-2">
           <button
             type="button"
-            onClick={() => goLogical(activeLogical - 1)}
+            onClick={() => goBy(-1)}
             className="hidden min-h-10 rounded-lg border border-[var(--line)] bg-[var(--panel)]/80 px-3 py-2 text-sm font-semibold text-[var(--ink)] backdrop-blur transition hover:border-[var(--brass)] active:scale-95 sm:inline-flex"
             aria-label="Previous sample card"
           >
@@ -256,7 +325,7 @@ export function HeroCarousel() {
                 role="tab"
                 aria-selected={i === activeLogical}
                 aria-label={item.caption}
-                onClick={() => goLogical(i)}
+                onClick={() => goToLogical(i)}
                 className={`h-2 rounded-full transition-all ${
                   i === activeLogical
                     ? "w-6 bg-[var(--brass)]"
@@ -267,7 +336,7 @@ export function HeroCarousel() {
           </div>
           <button
             type="button"
-            onClick={() => goLogical(activeLogical + 1)}
+            onClick={() => goBy(1)}
             className="hidden min-h-10 rounded-lg border border-[var(--line)] bg-[var(--panel)]/80 px-3 py-2 text-sm font-semibold text-[var(--ink)] backdrop-blur transition hover:border-[var(--brass)] active:scale-95 sm:inline-flex"
             aria-label="Next sample card"
           >
